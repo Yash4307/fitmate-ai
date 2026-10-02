@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Your FitMate AI Plan</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💪</text></svg>" />
+  <style>
+    .result-page-wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+    .back-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 36px;
+      padding-bottom: 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .back-bar a {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-secondary);
+      text-decoration: none;
+      font-size: 0.88rem;
+      font-weight: 500;
+      padding: 8px 16px;
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 20px;
+      transition: all 0.2s;
+    }
+    .back-bar a:hover {
+      color: var(--text-primary);
+      border-color: rgba(255,255,255,0.18);
+    }
+    .back-bar-title {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--neon);
+    }
+    .print-btn {
+      margin-left: auto;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(57,255,20,0.08);
+      border: 1px solid var(--border);
+      color: var(--neon);
+      font-size: 0.82rem;
+      font-weight: 600;
+      padding: 8px 16px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s;
+    }
+    .print-btn:hover { background: rgba(57,255,20,0.15); }
+
+    .result-hero {
+      background: linear-gradient(135deg, rgba(57,255,20,0.08), rgba(57,255,20,0.03));
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 36px;
+      margin-bottom: 40px;
+    }
+    .result-hero-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .result-hero h1 {
+      font-size: clamp(1.4rem, 3vw, 2rem);
+      font-weight: 800;
+      letter-spacing: -0.5px;
+    }
+    .result-hero h1 span { color: var(--neon); }
+    .goal-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(57,255,20,0.12);
+      border: 1px solid var(--border-hover);
+      color: var(--neon);
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 8px 18px;
+      border-radius: 30px;
+    }
+
+    .no-plan-msg {
+      text-align: center;
+      padding: 80px 24px;
+    }
+    .no-plan-msg h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+      color: var(--text-secondary);
+    }
+    .no-plan-msg p { color: var(--text-muted); margin-bottom: 28px; }
+
+    @media print {
+      .back-bar, .regenerate-section { display: none !important; }
+      body { background: #fff; color: #000; }
+      .result-hero, .day-card, .meal-card { border-color: #ccc; background: #f9f9f9; }
+    }
+  </style>
+</head>
+<body>
+
+  <nav class="navbar">
+    <div class="nav-logo">Fit<span>Mate</span> <span style="color:var(--neon)">AI</span></div>
+    <div class="nav-tag">YOUR PLAN</div>
+  </nav>
+
+  <div class="result-page-wrap">
+
+    <div class="back-bar">
+      <a href="/">← Back to Home</a>
+      <span class="back-bar-title" id="planTitle">Loading your plan…</span>
+      <button class="print-btn" onclick="window.print()">🖨 Print Plan</button>
+    </div>
+
+    <div id="resultContent">
+      <div class="no-plan-msg" id="noPlanMsg" style="display:none">
+        <h2>No plan found</h2>
+        <p>It looks like you haven't generated a plan yet.</p>
+        <a href="/" class="btn-primary" style="display:inline-flex">Get My Plan →</a>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    <p>Made with <span style="color:var(--neon)">♥</span> by FitMate AI &nbsp;|&nbsp; Stay consistent. Stay strong. 💪</p>
+  </footer>
+
+  <script src="/static/script.js"></script>
+  <script>
+    // Load saved plan from sessionStorage if navigated here from the form
+    document.addEventListener('DOMContentLoaded', () => {
+      const raw = sessionStorage.getItem('fitmate_plan');
+      if (!raw) {
+        document.getElementById('noPlanMsg').style.display = 'block';
+        document.getElementById('planTitle').textContent = 'No plan found';
+        return;
+      }
+
+      const plan = JSON.parse(raw);
+      const { user, workout_plan, diet_plan, total_diet_calories } = plan;
+
+      // Set header
+      document.getElementById('planTitle').textContent = `${user.goal} Plan`;
+      document.title = `FitMate AI – ${user.goal} Plan`;
+
+      // Build result content
+      const container = document.getElementById('resultContent');
+      container.innerHTML = `
+        <!-- Hero summary -->
+        <div class="result-hero">
+          <div class="result-hero-top">
+            <h1>Your <span>${user.goal}</span> Plan</h1>
+            <div class="goal-pill">⚡ ${user.experience} Level</div>
+          </div>
+          <div class="user-stats-grid" id="resultUserStats"></div>
+        </div>
+
+        <!-- Workout -->
+        <div class="plan-section">
+          <div class="plan-section-title">
+            <div class="plan-icon">🏋️</div>
+            <h3>7-Day Workout Plan</h3>
+          </div>
+          <div class="workout-grid" id="resultWorkoutGrid"></div>
+        </div>
+
+        <!-- Diet -->
+        <div class="plan-section">
+          <div class="plan-section-title">
+            <div class="plan-icon">🥗</div>
+            <h3>Daily Diet Plan</h3>
+          </div>
+          <div class="diet-grid" id="resultDietGrid"></div>
+          <div class="calorie-summary" id="resultCalorieSummary"></div>
+        </div>
+
+        <div class="regenerate-section">
+          <a href="/" class="btn-back">← Edit Details</a>
+          <button class="btn-secondary" onclick="regenFromResult()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+            Regenerate Plan
+          </button>
+        </div>
+      `;
+
+      // Render stats using shared functions from script.js
+      renderUserStats(user);
+      // Override target IDs for this page
+      document.getElementById('userStatsGrid') && document.getElementById('resultUserStats').replaceWith(document.getElementById('userStatsGrid'));
+
+      renderWorkoutInto('resultWorkoutGrid', workout_plan);
+      renderDietInto('resultDietGrid', 'resultCalorieSummary', diet_plan, total_diet_calories, user);
+    });
+
+    function regenFromResult() {
+      const raw = sessionStorage.getItem('fitmate_last_input');
+      if (!raw) { window.location.href = '/'; return; }
+      fetch('/generate-plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: raw,
+      })
+      .then(r => r.json())
+      .then(plan => {
+        sessionStorage.setItem('fitmate_plan', JSON.stringify(plan));
+        location.reload();
+      })
+      .catch(() => alert('Regeneration failed. Try again.'));
+    }
+
+    // Helpers that render into specific container IDs (used on this page)
+    function renderWorkoutInto(gridId, workoutPlan) {
+      const grid = document.getElementById(gridId);
+      if (!grid) return;
+      grid.innerHTML = '';
+      Object.entries(workoutPlan).forEach(([day, exercises], index) => {
+        const card = document.createElement('div');
+        card.className = `day-card ${index === 0 ? 'open' : ''}`;
+        const exerciseItems = exercises.map(ex => `
+          <div class="exercise-item">
+            <div class="exercise-info">
+              <div class="exercise-name">${ex.exercise}</div>
+              <div class="exercise-instructions">${ex.instructions}</div>
+            </div>
+            <div class="exercise-right">
+              <div class="exercise-sets">${ex.sets} × ${ex.reps}</div>
+              ${ex.youtube ? `<a class="yt-link" href="${ex.youtube}" target="_blank" rel="noopener">▶ Watch Form</a>` : ''}
+            </div>
+          </div>
+        `).join('');
+        card.innerHTML = `
+          <div class="day-header" onclick="toggleDay(this)">
+            <span class="day-title">${day}</span>
+            <div style="display:flex;align-items:center;gap:10px">
+              <span class="day-count">${exercises.length} exercise${exercises.length !== 1 ? 's' : ''}</span>
+              <span class="day-chevron">▾</span>
+            </div>
+          </div>
+          <div class="exercises-list">${exerciseItems}</div>
+        `;
+        grid.appendChild(card);
+      });
+    }
+
+    function renderDietInto(gridId, summaryId, dietPlan, totalCalories, user) {
+      const grid = document.getElementById(gridId);
+      if (!grid) return;
+      const mealIcons = {
+        'Breakfast': '🌅', 'Mid-Morning Snack': '🍎', 'Lunch': '☀️',
+        'Evening Snack': '🥜', 'Evening Snack (Pre-Workout)': '⚡', 'Dinner': '🌙',
+      };
+      Object.entries(dietPlan).forEach(([meal, info]) => {
+        const icon = mealIcons[meal] || '🍽️';
+        const card = document.createElement('div');
+        card.className = 'meal-card';
+        card.innerHTML = `
+          <div class="meal-header">
+            <div class="meal-name">${icon} ${meal}</div>
+            <div class="meal-calories">${info.calories} kcal</div>
+          </div>
+          <ul class="meal-items">${info.items.map(i => `<li>${i}</li>`).join('')}</ul>
+          <div class="meal-tip">${info.tips}</div>
+        `;
+        grid.appendChild(card);
+      });
+
+      const summary = document.getElementById(summaryId);
+      if (summary) {
+        const diff = totalCalories - user.target_calories;
+        const diffText = diff > 0 ? `+${diff} over target` : `${Math.abs(diff)} under target`;
+        summary.innerHTML = `
+          <div class="calorie-info">
+            <h4>Total Daily Calories</h4>
+            <p>Target: ${user.target_calories} kcal (${user.calorie_label}) &nbsp;•&nbsp; ${diffText}</p>
+          </div>
+          <div>
+            <div class="calorie-number">${totalCalories}</div>
+            <span class="calorie-unit">kcal / day</span>
+          </div>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>

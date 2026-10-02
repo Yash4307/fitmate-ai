@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FitMate AI – Gym Starter Assistant</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💪</text></svg>" />
+</head>
+<body>
+
+  <!-- TOAST NOTIFICATION -->
+  <div class="toast" id="toast"></div>
+
+  <!-- LOADING OVERLAY -->
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text">Generating your <span>personalized plan</span>…</div>
+  </div>
+
+  <!-- ===== EXERCISE LIBRARY OVERLAY ===== -->
+  <div class="lib-overlay" id="libOverlay">
+    <div class="lib-panel">
+
+      <!-- LIB HEADER -->
+      <div class="lib-header">
+        <div class="lib-header-left">
+          <div class="lib-title">
+            <span class="lib-title-icon">📚</span>
+            <div>
+              <h2>Exercise Library</h2>
+              <p class="lib-subtitle">Browse, filter, and find substitutions</p>
+            </div>
+          </div>
+        </div>
+        <button class="lib-close-btn" onclick="closeLibrary()" title="Close">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6L6 18M6 6l12 12"/></svg>
+        </button>
+      </div>
+
+      <!-- LIB FILTERS -->
+      <div class="lib-filters">
+        <!-- Muscle group tabs -->
+        <div class="lib-muscle-tabs" id="libMuscleTabs">
+          <button class="lib-tab active" data-muscle="all" onclick="setLibMuscle('all', this)">All</button>
+          <button class="lib-tab" data-muscle="chest" onclick="setLibMuscle('chest', this)">💪 Chest</button>
+          <button class="lib-tab" data-muscle="legs" onclick="setLibMuscle('legs', this)">🦵 Legs</button>
+          <button class="lib-tab" data-muscle="back" onclick="setLibMuscle('back', this)">🔙 Back</button>
+          <button class="lib-tab" data-muscle="shoulders" onclick="setLibMuscle('shoulders', this)">🏋️ Shoulders</button>
+          <button class="lib-tab" data-muscle="arms" onclick="setLibMuscle('arms', this)">💪 Arms</button>
+          <button class="lib-tab" data-muscle="core" onclick="setLibMuscle('core', this)">🎯 Core</button>
+        </div>
+
+        <!-- My Level selector -->
+        <div class="lib-level-bar" id="libLevelBar">
+          <span class="lib-level-label">My Level:</span>
+          <div class="lib-level-btns">
+            <button class="lib-lvl-btn" data-level="beginner"     onclick="setUserLevel('beginner', this)">🟢 Beginner</button>
+            <button class="lib-lvl-btn" data-level="intermediate" onclick="setUserLevel('intermediate', this)">🟡 Intermediate</button>
+            <button class="lib-lvl-btn" data-level="advanced"     onclick="setUserLevel('advanced', this)">🔴 Advanced</button>
+            <button class="lib-lvl-btn lib-lvl-any" data-level="all" onclick="setUserLevel('all', this)">✕ Any</button>
+          </div>
+          <span class="lib-level-hint" id="libLevelHint">Select your level for personalized recommendations</span>
+        </div>
+
+        <!-- Equipment + search row -->
+        <div class="lib-filter-row">
+          <div class="lib-equipment-wrap">
+            <label class="lib-filter-label">Equipment</label>
+            <div class="select-wrapper lib-select-wrap">
+              <select id="libEquipFilter" class="lib-select" onchange="applyLibFilters()">
+                <option value="all">All Equipment</option>
+                <option value="none">🤸 No Equipment</option>
+                <option value="dumbbells">🏋️ Dumbbells</option>
+                <option value="machine">🔩 Machine</option>
+                <option value="barbell">🪝 Barbell</option>
+              </select>
+            </div>
+          </div>
+          <div class="lib-difficulty-wrap">
+            <label class="lib-filter-label">Difficulty</label>
+            <div class="select-wrapper lib-select-wrap">
+              <select id="libDiffFilter" class="lib-select" onchange="applyLibFilters()">
+                <option value="all">All Levels</option>
+                <option value="beginner">🟢 Beginner</option>
+                <option value="intermediate">🟡 Intermediate</option>
+                <option value="advanced">🔴 Advanced</option>
+              </select>
+            </div>
+          </div>
+          <div class="search-input-wrap lib-search-wrap">
+            <svg class="search-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+            <input type="text" class="search-input" id="libSearch" placeholder="Search exercises…" oninput="applyLibFilters()" />
+            <button class="search-clear" id="libSearchClear" onclick="clearLibSearch()" style="display:none">✕</button>
+          </div>
+          <div class="lib-count-badge" id="libCountBadge">— exercises</div>
+        </div>
+      </div>
+
+      <!-- LIB CONTENT: GRID + DETAIL PANEL -->
+      <div class="lib-body">
+        <!-- Exercise grid -->
+        <div class="lib-grid-wrap">
+          <div class="lib-grid" id="libGrid"></div>
+          <div class="lib-empty" id="libEmpty" style="display:none">
+            <div class="lib-empty-icon">🔍</div>
+            <div class="lib-empty-text">No exercises match your filters</div>
+            <button class="lib-reset-btn" onclick="resetLibFilters()">Reset Filters</button>
+          </div>
+        </div>
+
+        <!-- Detail panel (slides in on card click) -->
+        <div class="lib-detail" id="libDetail">
+          <div class="lib-detail-inner" id="libDetailInner">
+            <div class="lib-detail-placeholder">
+              <div class="lib-detail-placeholder-icon">👆</div>
+              <div>Click any exercise card to see details</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- VOICE PANEL -->
+  <div class="voice-panel" id="voicePanel">
+    <div class="voice-panel-header">
+      <span class="voice-pulse" id="voicePulse"></span>
+      <span id="voiceStatus">Listening…</span>
+      <button class="voice-close" onclick="stopVoice()">✕</button>
+    </div>
+    <div class="voice-transcript" id="voiceTranscript">Say a command…</div>
+    <div class="voice-hints">
+      <span>"Generate plan"</span>
+      <span>"Show diet"</span>
+      <span>"Show workout"</span>
+      <span>"Dark mode"</span>
+      <span>"Light mode"</span>
+    </div>
+  </div>
+
+  <!-- ===== NAVBAR ===== -->
+  <nav class="navbar">
+    <div class="nav-logo">Fit<span>Mate</span> <span style="color:var(--neon)">AI</span></div>
+    <div class="nav-controls">
+      <div class="nav-tag">BEGINNER FRIENDLY</div>
+
+      <!-- THEME TOGGLE -->
+      <div class="theme-toggle" title="Toggle light/dark mode">
+        <span class="theme-icon">🌙</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="themeToggle" onchange="toggleTheme()" />
+          <span class="toggle-track"></span>
+        </label>
+        <span class="theme-icon">☀️</span>
+      </div>
+
+      <!-- LIBRARY BUTTON -->
+      <button class="lib-nav-btn" onclick="openLibrary()" title="Exercise Library">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        Library
+      </button>
+
+      <!-- VOICE BUTTON -->
+      <button class="voice-btn" id="voiceBtn" onclick="startVoice()" title="Voice command">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+          <path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/>
+        </svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ===== HERO SECTION ===== -->
+  <section class="hero" id="heroSection">
+    <div class="hero-bg" aria-hidden="true"></div>
+
+    <div class="hero-content">
+      <div class="hero-badge">
+        <span class="hero-badge-dot"></span>
+        Premium Fitness Assistant
+      </div>
+      <h1>Train Smarter.<br>Lift Better.</h1>
+      <p class="hero-tagline">Your AI-powered gym companion</p>
+      <p class="hero-subtitle">Personalized workouts &amp; Indian diet plans,<br>tailored for every beginner.</p>
+
+      <div class="hero-cta-row">
+        <button class="btn-primary" onclick="scrollToForm()">
+          Get My Free Plan
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </button>
+        <button class="btn-hero-secondary" onclick="openLibrary()">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+          Exercise Library
+        </button>
+      </div>
+
+      <div class="hero-stats">
+        <div class="stat-item">
+          <span class="stat-value">7-Day</span>
+          <span class="stat-label">Workout Plan</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="stat-item">
+          <span class="stat-value">5-Meal</span>
+          <span class="stat-label">Indian Diet</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="stat-item">
+          <span class="stat-value">33+</span>
+          <span class="stat-label">Exercises</span>
+        </div>
+        <div class="stat-divider" aria-hidden="true"></div>
+        <div class="stat-item">
+          <span class="stat-value">100%</span>
+          <span class="stat-label">Free &amp; Fast</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== MOTIVATION SECTION ===== -->
+  <section class="section motivation-section" id="motivationSection">
+    <div class="section-title">
+      <h2>Stay <span>Motivated</span> 💪</h2>
+      <p>Your daily dose of fitness inspiration</p>
+    </div>
+    <div class="quotes-carousel">
+      <div class="quotes-track" id="quotesTrack">
+
+        <div class="quote-card quote-card-1">
+          <div class="quote-icon">"</div>
+          <blockquote class="quote-text">Discipline beats motivation every single day. Motivation fades — discipline builds champions.</blockquote>
+          <div class="quote-author">— Arnold Schwarzenegger</div>
+          <div class="quote-tag">Consistency</div>
+        </div>
+
+        <div class="quote-card quote-card-2">
+          <div class="quote-icon">"</div>
+          <blockquote class="quote-text">The pain you feel today will be the strength you feel tomorrow. Push yourself — no one else will do it for you.</blockquote>
+          <div class="quote-author">— Unknown</div>
+          <div class="quote-tag">Strength</div>
+        </div>
+
+        <div class="quote-card quote-card-3">
+          <div class="quote-icon">"</div>
+          <blockquote class="quote-text">Consistency is what transforms average into excellence. Show up every day, even when you don't feel like it.</blockquote>
+          <div class="quote-author">— Dwayne Johnson</div>
+          <div class="quote-tag">Mindset</div>
+        </div>
+
+        <div class="quote-card quote-card-4">
+          <div class="quote-icon">"</div>
+          <blockquote class="quote-text">It never gets easier — you just get stronger. Every rep, every set, every drop of sweat is an investment in yourself.</blockquote>
+          <div class="quote-author">— Greg Plitt</div>
+          <div class="quote-tag">Growth</div>
+        </div>
+
+      </div>
+      <div class="quotes-dots" id="quotesDots">
+        <button class="q-dot active" onclick="goToQuote(0)"></button>
+        <button class="q-dot" onclick="goToQuote(1)"></button>
+        <button class="q-dot" onclick="goToQuote(2)"></button>
+        <button class="q-dot" onclick="goToQuote(3)"></button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== INPUT FORM ===== -->
+  <section class="section" id="formSection">
+    <div class="section-title">
+      <h2>Build Your <span>Plan</span></h2>
+      <p>Tell us about yourself — your plan generates instantly</p>
+    </div>
+
+    <div class="form-card">
+      <form id="fitnessForm" onsubmit="generatePlan(event)">
+        <div class="form-grid">
+
+          <div class="form-group">
+            <label for="age">Age (years)</label>
+            <input type="number" id="age" name="age" placeholder="e.g. 22" min="13" max="70" required oninput="updateLiveBMI()" />
+          </div>
+
+          <div class="form-group">
+            <label for="weight">Weight (kg)</label>
+            <input type="number" id="weight" name="weight" placeholder="e.g. 72" min="30" max="200" step="0.1" required oninput="updateLiveBMI()" />
+          </div>
+
+          <div class="form-group">
+            <label for="height">Height (cm)</label>
+            <input type="number" id="height" name="height" placeholder="e.g. 175" min="100" max="250" required oninput="updateLiveBMI()" />
+          </div>
+
+          <div class="form-group">
+            <label for="experience">Experience Level</label>
+            <div class="select-wrapper">
+              <select id="experience" name="experience">
+                <option value="beginner">Beginner (0–6 months)</option>
+                <option value="intermediate">Intermediate (6–24 months)</option>
+                <option value="advanced">Advanced (2+ years)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-group full-width">
+            <label for="goal">Your Goal</label>
+            <div class="select-wrapper">
+              <select id="goal" name="goal" required onchange="updateLiveBMI()">
+                <option value="fat_loss">🔥 Fat Loss – Burn fat &amp; get lean</option>
+                <option value="muscle_gain">💪 Muscle Gain – Build strength &amp; size</option>
+              </select>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- LIVE BMI PREVIEW -->
+        <div class="live-bmi-card" id="liveBmiCard" style="display:none">
+          <div class="live-bmi-header">
+            <span class="live-bmi-title">📊 Live BMI Preview</span>
+            <span class="live-bmi-value" id="liveBmiValue">—</span>
+          </div>
+          <div class="bmi-gauge-track">
+            <div class="bmi-gauge-fill" id="bmiGaugeFill"></div>
+            <div class="bmi-gauge-marker" id="bmiGaugeMarker"></div>
+          </div>
+          <div class="bmi-gauge-labels">
+            <span>Underweight</span><span>Normal</span><span>Overweight</span><span>Obese</span>
+          </div>
+          <div class="live-bmi-meta" id="liveBmiMeta"></div>
+        </div>
+
+        <button type="submit" class="submit-btn" id="submitBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          Generate My Plan
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ===== RESULTS SECTION ===== -->
+  <section class="section" id="results-section">
+
+    <!-- GOAL SUMMARY -->
+    <div class="results-header" id="resultsHeader">
+      <div class="results-header-top">
+        <h2 id="resultsTitle">Your Plan</h2>
+        <div class="results-date" id="resultsDate"></div>
+      </div>
+      <div class="user-stats-grid" id="userStatsGrid"></div>
+
+      <!-- BMI GAUGE IN RESULTS -->
+      <div class="bmi-result-gauge" id="bmiResultGauge" style="display:none">
+        <div class="bmi-gauge-label-row">
+          <span class="bmi-gauge-title">BMI Gauge</span>
+          <span class="bmi-category-badge" id="bmiCategoryBadge"></span>
+        </div>
+        <div class="bmi-gauge-track">
+          <div class="bmi-gauge-fill" id="resultBmiGaugeFill"></div>
+          <div class="bmi-gauge-marker" id="resultBmiGaugeMarker"></div>
+        </div>
+        <div class="bmi-gauge-labels">
+          <span>Underweight &lt;18.5</span><span>Normal 18.5–25</span><span>Overweight 25–30</span><span>Obese &gt;30</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== PROGRESS TRACKER ===== -->
+    <div class="plan-section" id="progressSection" style="display:none">
+      <div class="plan-section-title">
+        <div class="plan-icon">📈</div>
+        <h3>Progress Tracker</h3>
+      </div>
+      <div class="progress-card">
+        <div class="progress-top-row">
+          <div class="streak-badge" id="streakBadge">
+            <span class="streak-fire">🔥</span>
+            <span class="streak-count" id="streakCount">0</span>
+            <span class="streak-label">Day Streak</span>
+          </div>
+          <div class="progress-meta">
+            <div class="progress-meta-item">
+              <span class="progress-meta-value" id="completedCount">0</span>
+              <span class="progress-meta-label">Days Done Today</span>
+            </div>
+            <div class="progress-meta-item">
+              <span class="progress-meta-value" id="totalDaysCount">7</span>
+              <span class="progress-meta-label">Total Days</span>
+            </div>
+          </div>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-track">
+            <div class="progress-bar-fill" id="progressBarFill" style="width:0%"></div>
+          </div>
+          <span class="progress-bar-pct" id="progressBarPct">0%</span>
+        </div>
+        <div class="progress-days-grid" id="progressDaysGrid"></div>
+      </div>
+    </div>
+
+    <!-- ===== WORKOUT PLAN ===== -->
+    <div class="plan-section">
+      <div class="plan-section-title-row">
+        <div class="plan-section-title">
+          <div class="plan-icon">🏋️</div>
+          <h3>7-Day Workout Plan</h3>
+        </div>
+        <button class="today-plan-btn" id="todayPlanBtn" onclick="generateTodayPlan()">
+          📅 Today's Plan
+        </button>
+      </div>
+
+      <!-- EXERCISE SEARCH -->
+      <div class="search-bar-wrap">
+        <div class="search-input-wrap">
+          <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+          <input type="text" class="search-input" id="exerciseSearch" placeholder="Search exercises…" oninput="filterExercises(this.value)" />
+          <button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none">✕</button>
+        </div>
+        <div class="search-results-count" id="searchCount" style="display:none"></div>
+      </div>
+
+      <!-- TODAY'S PLAN BANNER -->
+      <div class="today-plan-banner" id="todayPlanBanner" style="display:none">
+        <div class="today-plan-banner-inner">
+          <span class="today-plan-date" id="todayPlanDate"></span>
+          <span class="today-plan-label">Today's Suggested Workout</span>
+        </div>
+        <button class="btn-close-today" onclick="closeTodayPlan()">✕</button>
+      </div>
+
+      <!-- ADAPT MY PLAN BAR -->
+      <div class="adapt-bar" id="adaptBar" style="display:none">
+        <div class="adapt-bar-top">
+          <span class="adapt-bar-icon">⚡</span>
+          <span class="adapt-bar-title">Adapt to My Equipment</span>
+          <span class="adapt-bar-hint">Exercises will swap to match what you have available</span>
+        </div>
+        <div class="adapt-pills" id="adaptPills">
+          <button class="adapt-pill active" data-equip="all"       onclick="setAdaptEquip('all',this)">🔀 Any</button>
+          <button class="adapt-pill" data-equip="none"       onclick="setAdaptEquip('none',this)">🤸 No Equipment</button>
+          <button class="adapt-pill" data-equip="dumbbells"  onclick="setAdaptEquip('dumbbells',this)">🏋️ Dumbbells</button>
+          <button class="adapt-pill" data-equip="machine"    onclick="setAdaptEquip('machine',this)">🔩 Machine</button>
+          <button class="adapt-pill" data-equip="barbell"    onclick="setAdaptEquip('barbell',this)">🪝 Barbell</button>
+        </div>
+        <div class="adapt-preview" id="adaptPreview"></div>
+      </div>
+
+      <div class="workout-grid" id="workoutGrid"></div>
+    </div>
+
+    <!-- ===== DIET PLAN ===== -->
+    <div class="plan-section">
+      <div class="plan-section-title" id="dietSectionTitle">
+        <div class="plan-icon">🥗</div>
+        <h3>Daily Diet Plan</h3>
+      </div>
+      <div class="diet-grid" id="dietGrid"></div>
+      <div class="calorie-summary" id="calorieSummary"></div>
+    </div>
+
+    <!-- ===== BEGINNER TIPS ===== -->
+    <div class="plan-section">
+      <div class="plan-section-title">
+        <div class="plan-icon">💡</div>
+        <h3>Beginner Tips</h3>
+      </div>
+      <div class="tips-grid">
+        <div class="tip-card tip-green">
+          <div class="tip-icon">🧘</div>
+          <div class="tip-body">
+            <div class="tip-title">Focus on Form, Not Speed</div>
+            <div class="tip-text">Perform every rep with full control. Slow, deliberate movements reduce injury risk and build stronger muscles than rushing through reps.</div>
+          </div>
+        </div>
+        <div class="tip-card tip-blue">
+          <div class="tip-icon">🦵</div>
+          <div class="tip-body">
+            <div class="tip-title">Keep Your Back Straight</div>
+            <div class="tip-text">For squats, deadlifts, and rows — maintain a neutral spine. Rounding the back under load is the #1 cause of beginner injuries.</div>
+          </div>
+        </div>
+        <div class="tip-card tip-orange">
+          <div class="tip-icon">💧</div>
+          <div class="tip-body">
+            <div class="tip-title">Stay Hydrated</div>
+            <div class="tip-text">Drink at least 2–3 litres of water daily. Dehydration leads to muscle cramps, fatigue, and poor performance. Sip between sets.</div>
+          </div>
+        </div>
+        <div class="tip-card tip-purple">
+          <div class="tip-icon">😴</div>
+          <div class="tip-body">
+            <div class="tip-title">Rest Days Are Gains Days</div>
+            <div class="tip-text">Muscles grow during recovery, not during training. Never skip rest days — sleep 7–8 hours every night for optimal progress.</div>
+          </div>
+        </div>
+        <div class="tip-card tip-green">
+          <div class="tip-icon">🍽️</div>
+          <div class="tip-body">
+            <div class="tip-title">Eat Within 1 Hour After Workout</div>
+            <div class="tip-text">Post-workout nutrition is critical. Have a protein-rich meal (eggs, paneer, dal) within 60 minutes to maximize muscle recovery.</div>
+          </div>
+        </div>
+        <div class="tip-card tip-blue">
+          <div class="tip-icon">📸</div>
+          <div class="tip-body">
+            <div class="tip-title">Track Your Progress</div>
+            <div class="tip-text">Take weekly photos and note your weights. Progress feels slow day-to-day, but comparing week 1 to week 8 will motivate you to keep going.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== ACTION BUTTONS ===== -->
+    <div class="regenerate-section">
+      <button class="btn-back" onclick="scrollToForm()">← Edit Details</button>
+      <button class="btn-secondary" onclick="regeneratePlan()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M23 4v6h-6M1 20v-6h6"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+        Regenerate Plan
+      </button>
+      <button class="btn-share" onclick="sharePlan()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+        Share Plan
+      </button>
+    </div>
+
+  </section>
+
+  <!-- FOOTER -->
+  <footer>
+    <p>Made with <span>♥</span> by FitMate AI &nbsp;|&nbsp; Stay consistent. Stay strong. 💪</p>
+  </footer>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>
